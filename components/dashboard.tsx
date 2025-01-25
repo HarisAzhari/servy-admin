@@ -3,12 +3,16 @@ import { Users, Store, CheckCircle, Box, Clock, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
+import { useRouter } from 'next/navigation'; // Import from next/navigation for app directory
+
 
 const Dashboard = () => {
+  const router = useRouter(); // Use Next.js router
+
   // Add state for dashboard stats
   const [dashboardStats, setDashboardStats] = useState({
     total_users: 0,
-    total_service_providers: 0,
+    total_verified_providers: 0,
     total_completed_services: 0,
     total_active_services: 0
   });
@@ -107,13 +111,18 @@ const Dashboard = () => {
           </Card>
         </motion.div>
 
-        <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+<motion.div 
+  whileHover={{ scale: 1.02 }} 
+  transition={{ duration: 0.2 }}
+  onClick={() => router.push('/service-providers')}
+  className="cursor-pointer"
+>
           <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 hover:shadow-xl transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Service Providers</p>
-                  <p className="text-3xl font-bold">{dashboardStats.total_service_providers}</p>
+                  <p className="text-3xl font-bold">{dashboardStats.total_verified_providers}</p>
                 </div>
                 <div className="bg-indigo-100 p-3 rounded-full">
                   <Store className="h-6 w-6 text-indigo-600" />

@@ -1,9 +1,20 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -12,213 +23,226 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle, XCircle, Eye } from "lucide-react";
+import { CheckCircle, XCircle, Eye, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
-// Mock data aligned with database schema
-const pendingProviders = [
-  {
-    id: 1,
-    business_name: "John's Plumbing Services",
-    owner_name: "John Smith",
-    email: "john@plumbingservices.com",
-    phone_number: "+1234567890",
-    service_category: "Plumber",
-    created_at: "2024-03-15",
-  },
-  {
-    id: 2,
-    business_name: "Elite Electrical Solutions",
-    owner_name: "Sarah Johnson",
-    email: "sarah@eliteelectrical.com",
-    phone_number: "+1987654321",
-    service_category: "Electrical",
-    created_at: "2024-03-14",
-  },
-  {
-    id: 3,
-    business_name: "Swift HVAC Systems",
-    owner_name: "Michael Chen",
-    email: "michael@swifthvac.com",
-    phone_number: "+1234509876",
-    service_category: "HVAC",
-    created_at: "2024-03-13",
-  },
-  {
-    id: 4,
-    business_name: "Precision Painting Pro",
-    owner_name: "David Wilson",
-    email: "david@precisionpaint.com",
-    phone_number: "+1122334455",
-    service_category: "Painter",
-    created_at: "2024-03-12",
-  },
-  {
-    id: 5,
-    business_name: "GreenThumb Landscaping",
-    owner_name: "Emma Rodriguez",
-    email: "emma@greenthumb.com",
-    phone_number: "+1555666777",
-    service_category: "Landscaping",
-    created_at: "2024-03-11",
-  },
-  {
-    id: 6,
-    business_name: "SecureHome Locksmith",
-    owner_name: "James Lee",
-    email: "james@securehome.com",
-    phone_number: "+1777888999",
-    service_category: "Locksmith",
-    created_at: "2024-03-10",
-  },
-  {
-    id: 7,
-    business_name: "Crystal Clear Windows",
-    owner_name: "Lisa Anderson",
-    email: "lisa@crystalwindows.com",
-    phone_number: "+1444555666",
-    service_category: "Window Cleaning",
-    created_at: "2024-03-09",
-  },
-  {
-    id: 8,
-    business_name: "FastFix Appliance Repair",
-    owner_name: "Robert Taylor",
-    email: "robert@fastfix.com",
-    phone_number: "+1999000111",
-    service_category: "Appliance Repair",
-    created_at: "2024-03-08",
-  },
-  {
-    id: 9,
-    business_name: "Modern Roofing Solutions",
-    owner_name: "Patricia Martinez",
-    email: "patricia@modernroof.com",
-    phone_number: "+1222333444",
-    service_category: "Roofing",
-    created_at: "2024-03-07",
-  },
-  {
-    id: 10,
-    business_name: "Quality Carpet Care",
-    owner_name: "Thomas Brown",
-    email: "thomas@qualitycarpet.com",
-    phone_number: "+1666777888",
-    service_category: "Carpet Cleaning",
-    created_at: "2024-03-06",
-  },
-  {
-    id: 11,
-    business_name: "Expert Pest Control",
-    owner_name: "Kevin White",
-    email: "kevin@expertpest.com",
-    phone_number: "+1333444555",
-    service_category: "Pest Control",
-    created_at: "2024-03-05",
-  },
-  {
-    id: 12,
-    business_name: "Garage Door Masters",
-    owner_name: "Amanda Clark",
-    email: "amanda@garagemasters.com",
-    phone_number: "+1888999000",
-    service_category: "Garage Door Repair",
-    created_at: "2024-03-04",
-  },
-  {
-    id: 13,
-    business_name: "Pool Care Experts",
-    owner_name: "Daniel Garcia",
-    email: "daniel@poolcare.com",
-    phone_number: "+1777666555",
-    service_category: "Pool Maintenance",
-    created_at: "2024-03-03",
-  },
-  {
-    id: 14,
-    business_name: "Home Security Pro",
-    owner_name: "Rachel Kim",
-    email: "rachel@homesecurity.com",
-    phone_number: "+1222111333",
-    service_category: "Security Systems",
-    created_at: "2024-03-02",
-  },
-  {
-    id: 15,
-    business_name: "Drywall Solutions",
-    owner_name: "Mark Thompson",
-    email: "mark@drywallpro.com",
-    phone_number: "+1444333222",
-    service_category: "Drywall",
-    created_at: "2024-03-01",
-  },
-  {
-    id: 16,
-    business_name: "Flooring Experts",
-    owner_name: "Jessica Wong",
-    email: "jessica@flooringexp.com",
-    phone_number: "+1555444666",
-    service_category: "Flooring",
-    created_at: "2024-02-29",
-  },
-  {
-    id: 17,
-    business_name: "Tree Care Services",
-    owner_name: "Brian Miller",
-    email: "brian@treecare.com",
-    phone_number: "+1666555444",
-    service_category: "Tree Service",
-    created_at: "2024-02-28",
-  },
-  {
-    id: 18,
-    business_name: "Smart Home Installation",
-    owner_name: "Sophie Turner",
-    email: "sophie@smarthome.com",
-    phone_number: "+1999888777",
-    service_category: "Smart Home",
-    created_at: "2024-02-27",
-  },
-  {
-    id: 19,
-    business_name: "Fence Installation Pro",
-    owner_name: "Chris Evans",
-    email: "chris@fencepro.com",
-    phone_number: "+1111222333",
-    service_category: "Fencing",
-    created_at: "2024-02-26",
-  },
-  {
-    id: 20,
-    business_name: "Gutter Cleaning Express",
-    owner_name: "Maria Sanchez",
-    email: "maria@gutterexpress.com",
-    phone_number: "+1777888999",
-    service_category: "Gutter Cleaning",
-    created_at: "2024-02-25",
-  },
-];
+// Types
+interface Provider {
+  id: number;
+  business_name: string;
+  owner_name: string;
+  email: string;
+  phone_number: string;
+  service_category: string;
+  created_at: string;
+}
+
+interface VerificationCounts {
+  counts: {
+    approved: {
+      last_30_days: number;
+      last_7_days: number;
+      total: number;
+    };
+    pending: {
+      last_30_days: number;
+      last_7_days: number;
+      total: number;
+    };
+    rejected: {
+      last_30_days: number;
+      last_7_days: number;
+      total: number;
+    };
+  };
+  latest_pending: Provider[];
+  summary: {
+    approved_percentage: number;
+    pending_percentage: number;
+    rejected_percentage: number;
+  };
+  total_providers: number;
+}
+
+// API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+
+// API endpoints
+const API_ENDPOINTS = {
+  VERIFICATION_COUNTS: `${API_BASE_URL}/api/admin/verification/counts`,
+  PENDING_PROVIDERS: `${API_BASE_URL}/api/admin/providers/pending`,
+  VERIFY_PROVIDER: (id: number) => `${API_BASE_URL}/api/admin/provider/${id}/verify`,
+};
 
 const VerifyPageContent = () => {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [verificationCounts, setVerificationCounts] = useState<VerificationCounts | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Rejection modal state
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [rejectionNotes, setRejectionNotes] = useState('');
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
+  
   const itemsPerPage = 6;
 
-  // Calculate pagination
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = pendingProviders.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(pendingProviders.length / itemsPerPage);
+  // Fetch verification counts and pending providers
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setError(null);
+        const [countsResponse, providersResponse] = await Promise.all([
+          fetch(API_ENDPOINTS.VERIFICATION_COUNTS, {
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json',
+            },
+          }),
+          fetch(API_ENDPOINTS.PENDING_PROVIDERS, {
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json',
+            },
+          })
+        ]);
 
-  // Add this function to handle navigation
+        if (!countsResponse.ok || !providersResponse.ok) {
+          throw new Error('Failed to fetch data');
+        }
+
+        const countsData = await countsResponse.json();
+        const providersData = await providersResponse.json();
+
+        setVerificationCounts(countsData);
+        setProviders(Array.isArray(providersData) ? providersData : providersData.providers || []);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error('Error fetching data:', errorMessage);
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Handle provider verification
+  const handleVerification = async (providerId: number, status: 'approved' | 'rejected', notes?: string) => {
+    setActionLoading(providerId);
+    try {
+      const response = await fetch(API_ENDPOINTS.VERIFY_PROVIDER(providerId), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          notes: notes || (status === 'approved' ? 'Provider approved by admin' : 'Provider rejected by admin')
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update provider status');
+      }
+
+      // Remove the provider from the list
+      setProviders(prev => prev.filter(p => p.id !== providerId));
+      
+      // Update counts
+      if (verificationCounts) {
+        setVerificationCounts(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            counts: {
+              ...prev.counts,
+              pending: {
+                ...prev.counts.pending,
+                total: prev.counts.pending.total - 1
+              },
+              [status]: {
+                ...prev.counts[status],
+                total: prev.counts[status].total + 1
+              }
+            }
+          };
+        });
+      }
+
+      toast.success(`Provider ${status} successfully`);
+      
+      // Reset rejection dialog state
+      setIsRejectDialogOpen(false);
+      setRejectionNotes('');
+      setSelectedProviderId(null);
+    } catch (error) {
+      console.error('Error updating provider status:', error);
+      toast.error('Failed to update provider status');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectClick = (providerId: number) => {
+    setSelectedProviderId(providerId);
+    setIsRejectDialogOpen(true);
+  };
+
+  const handleRejectConfirm = () => {
+    if (selectedProviderId && rejectionNotes.trim()) {
+      handleVerification(selectedProviderId, 'rejected', rejectionNotes.trim());
+    } else {
+      toast.error('Please provide rejection notes');
+    }
+  };
+
   const handleNavigateToDashboard = () => {
-    router.push('/');  // Navigate to root/dashboard
+    router.push('/');
   };
 
   const handleViewProviderInfo = (providerId: number) => {
     router.push(`/verify/information/${providerId}`);
   };
+
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = providers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(providers.length / itemsPerPage);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
+        <div className="text-red-500 text-center max-w-md">
+          <h3 className="text-lg font-semibold mb-2">Error Loading Data</h3>
+          <p className="text-sm">{error}</p>
+        </div>
+        <Button 
+          onClick={() => window.location.reload()} 
+          variant="outline"
+          size="sm"
+        >
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -253,7 +277,7 @@ const VerifyPageContent = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold">{pendingProviders.length}</p>
+                <p className="text-2xl font-bold">{verificationCounts?.counts.pending.total || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -267,7 +291,7 @@ const VerifyPageContent = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold">3</p>
+                <p className="text-2xl font-bold">{verificationCounts?.counts.approved.total || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -281,7 +305,7 @@ const VerifyPageContent = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold">1</p>
+                <p className="text-2xl font-bold">{verificationCounts?.counts.rejected.total || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -293,7 +317,7 @@ const VerifyPageContent = () => {
         <CardHeader className="pb-3">
           <CardTitle>Pending Applications</CardTitle>
           <CardDescription>
-            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, pendingProviders.length)} of {pendingProviders.length} applications
+            Showing {providers.length > 0 ? indexOfFirstItem + 1 : 0} to {Math.min(indexOfLastItem, providers.length)} of {providers.length} applications
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -313,74 +337,148 @@ const VerifyPageContent = () => {
                 <TableRow 
                   key={provider.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleViewProviderInfo(provider.id)}
                 >
-                  <TableCell className="font-medium">
+                  <TableCell 
+                    className="font-medium"
+                    onClick={() => handleViewProviderInfo(provider.id)}
+                  >
                     <div>
                       {provider.business_name}
                       <div className="text-sm text-muted-foreground">{provider.email}</div>
                     </div>
                   </TableCell>
-                  <TableCell>{provider.owner_name}</TableCell>
-                  <TableCell>{provider.service_category}</TableCell>
-                  <TableCell>{provider.phone_number}</TableCell>
-                  <TableCell>{provider.created_at}</TableCell>
+                  <TableCell onClick={() => handleViewProviderInfo(provider.id)}>
+                    {provider.owner_name}
+                  </TableCell>
+                  <TableCell onClick={() => handleViewProviderInfo(provider.id)}>
+                    {provider.service_category}
+                  </TableCell>
+                  <TableCell onClick={() => handleViewProviderInfo(provider.id)}>
+                    {provider.phone_number}
+                  </TableCell>
+                  <TableCell onClick={() => handleViewProviderInfo(provider.id)}>
+                    {new Date(provider.created_at).toLocaleDateString()}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 
                         variant="outline"
                         className="bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700"
+                        onClick={() => handleVerification(provider.id, 'approved')}
+                        disabled={actionLoading === provider.id}
                       >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Approve
+                        {actionLoading === provider.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </>
+                        )}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
                         className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                        onClick={() => handleRejectClick(provider.id)}
+                        disabled={actionLoading === provider.id}
                       >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Reject
+                        {actionLoading === provider.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </>
+                        )}
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
+              {providers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No pending applications
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
 
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-center space-x-2 py-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+{/* Pagination Controls */}
+{providers.length > 0 && (
+            <div className="flex items-center justify-center space-x-2 py-4">
               <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
+                variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(page)}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
               >
-                {page}
+                Previous
               </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Rejection Alert Dialog */}
+      <AlertDialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <AlertDialogContent className="max-w-[500px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject Provider Application</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please provide a reason for rejecting this provider application.
+              This note will be stored for administrative purposes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="Enter rejection notes..."
+              value={rejectionNotes}
+              onChange={(e) => setRejectionNotes(e.target.value)}
+              className="min-h-[100px] resize-none"
+            />
+          </div>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel
+              onClick={() => {
+                setIsRejectDialogOpen(false);
+                setRejectionNotes('');
+                setSelectedProviderId(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={handleRejectConfirm}
+              disabled={!rejectionNotes.trim()}
+            >
+              Confirm Rejection
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };
@@ -393,4 +491,4 @@ const VerifyPage = () => {
   );
 };
 
-export default VerifyPage; 
+export default VerifyPage;

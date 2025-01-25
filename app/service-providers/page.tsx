@@ -108,18 +108,31 @@ export default function ServiceProvidersPage() {
 
   const fetchProviderDetails = async (providerId: string) => {
     try {
+      // Fetch basic provider details
       const response = await fetch(`http://127.0.0.1:5000/api/admin/provider/${providerId}/details`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
+  
+      // Fetch provider rating
+      const ratingResponse = await fetch(`http://127.0.0.1:5000/api/provider/${providerId}/rating`);
+      if (ratingResponse.ok) {
+        const ratingData = await ratingResponse.json();
+        // Update the data with rating information
+        data.provider.rating = {
+          total_rating: ratingData.average_rating || 0,
+          rating_count: ratingData.rating_count || 0
+        };
+      }
+  
       setSelectedProvider(data);
       setIsDetailsOpen(true);
     } catch (error) {
       console.error('Error fetching provider details:', error);
     }
   };
-
+  
   const safeProviders = Array.isArray(providers) ? providers : [];
   
   const filteredProviders = safeProviders.filter(provider => {
@@ -271,8 +284,15 @@ export default function ServiceProvidersPage() {
                        selectedProvider.provider.verification_status.slice(1)}
                     </span>
                     <span className="text-sm flex items-center gap-1">
-                      {selectedProvider.provider.rating.total_rating} ★ ({selectedProvider.provider.rating.rating_count} reviews)
-                    </span>
+  {selectedProvider.provider.rating.total_rating > 0 ? (
+    <>
+      {selectedProvider.provider.rating.total_rating.toFixed(1)} 
+      <span className="text-yellow-400">★</span>
+    </>
+  ) : (
+    '0 ★'
+  )}
+</span>
                   </div>
                 </div>
               </div>

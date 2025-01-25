@@ -13,6 +13,20 @@
       total_active_services: number;
     }
 
+    interface Activity {
+      type: string;
+      id: number;
+      status?: string;
+      booking_date?: string;
+      booking_time?: string;
+      rating?: number;
+      review_text?: string;
+      user_name: string;
+      service_title: string;
+      provider_name: string;
+      created_at: string;
+    }
+
     interface TopService {
       id: number;
       service_title: string;
@@ -63,6 +77,9 @@
       const [latestReviews, setLatestReviews] = useState<Review[]>([]);
       const [topProviders, setTopProviders] = useState<TopProvider[]>([]);
       const [monthlyBookings, setMonthlyBookings] = useState<MonthlyBooking[]>([]);
+      const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+
+
 
       useEffect(() => {
         const fetchAllData = async () => {
@@ -71,6 +88,11 @@
             const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/stats`);
             const statsData = await statsResponse.json();
             setDashboardStats(statsData);
+
+            // Add this with other fetch calls in fetchAllData
+const activitiesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/activities/recent`);
+const activitiesData = await activitiesResponse.json();
+setRecentActivities(activitiesData);
 
             // Fetch top services
             const servicesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/services/top`);
@@ -98,27 +120,21 @@
         fetchAllData();
       }, []);
 
-      // Recent activities (keeping mock data as requested by backend)
-      const recentActivities = [
-        {
-          type: 'New Booking',
-          service: 'House Cleaning',
-          user: 'John Doe',
-          time: '2 hours ago'
-        },
-        {
-          type: 'Service Completed',
-          service: 'Plumbing Repair',
-          user: 'Alice Smith',
-          time: '3 hours ago'
-        },
-        {
-          type: 'New Provider',
-          service: 'Electrical Services',
-          user: 'Mike Johnson',
-          time: '5 hours ago'
+      const getTimeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+        
+        if (diffInMinutes < 60) {
+          return `${diffInMinutes} minutes ago`;
+        } else if (diffInMinutes < 1440) {
+          const hours = Math.floor(diffInMinutes / 60);
+          return `${hours} hours ago`;
+        } else {
+          const days = Math.floor(diffInMinutes / 1440);
+          return `${days} days ago`;
         }
-      ];
+      };
 
       return (
         <motion.div 
@@ -275,35 +291,66 @@
             </Card>
       
             <Card className="bg-gradient-to-br from-white to-purple-50">
-              <CardHeader>
-                <CardTitle>Recent Activities</CardTitle>
-                <CardDescription>Latest platform activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentActivities.map((activity, index) => (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      key={index}
-                      className="flex items-start space-x-4 p-3 hover:bg-white/50 rounded-lg backdrop-blur-sm transition-all duration-300"
-                    >
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        <Activity className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{activity.type}</p>
-                        <p className="text-sm text-muted-foreground">{activity.service} - {activity.user}</p>
-                        <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                          <Clock className="h-3 w-3 mr-1" /> {activity.time}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+  <CardHeader>
+    <CardTitle>Recent Activities</CardTitle>
+    <CardDescription>Latest platform activities</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <div className="space-y-4">
+      {recentActivities.map((activity, index) => (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.1 }}
+          key={activity.id}
+          className="flex items-start space-x-4 p-3 hover:bg-white/50 rounded-lg backdrop-blur-sm transition-all duration-300"
+        >
+          <div className={`p-2 rounded-full ${
+            activity.type === 'booking' 
+              ? activity.status === 'completed' 
+                ? 'bg-green-100' 
+                : 'bg-blue-100'
+              : 'bg-yellow-100'
+          }`}>
+            <Activity className={`h-4 w-4 ${
+              activity.type === 'booking'
+                ? activity.status === 'completed'
+                  ? 'text-green-600'
+                  : 'text-blue-600'
+                : 'text-yellow-600'
+            }`} />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium">
+              {activity.type === 'booking' 
+                ? `${activity.status === 'completed' ? 'Completed' : 'New'} Booking`
+                : 'New Review'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {activity.service_title} - {activity.user_name}
+              {activity.type === 'review' && activity.rating && (
+                <span className="ml-1 text-yellow-500">
+                  {'★'.repeat(activity.rating)}
+                </span>
+              )}
+            </p>
+            {activity.type === 'booking' && activity.booking_date && (
+              <p className="text-xs text-muted-foreground">
+                Scheduled for: {new Date(activity.booking_date).toLocaleDateString()} at {activity.booking_time}
+              </p>
+            )}
+            {activity.type === 'review' && activity.review_text && (
+              <p className="text-xs text-gray-600 italic">"{activity.review_text}"</p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1 flex items-center">
+              <Clock className="h-3 w-3 mr-1" /> {getTimeAgo(activity.created_at)}
+            </p>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  </CardContent>
+</Card>
           </div>
       
           {/* Platform Insights Grid */}
@@ -358,53 +405,83 @@
               </CardContent>
             </Card>
       
-         {/* Top Providers */}
-<Card>
+        {/* Top Providers */}
+<Card className="bg-gradient-to-br from-white to-purple-50">
   <CardHeader>
-    <CardTitle>Top Providers</CardTitle>
+    <CardTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600">Top Providers</CardTitle>
     <CardDescription>Best performing service providers</CardDescription>
   </CardHeader>
   <CardContent>
-    <div className="space-y-4">
-      {topProviders.map((provider) => (
-        <div key={provider.id} className="flex items-center space-x-4 p-2 hover:bg-slate-50 rounded-lg">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-bold overflow-hidden">
-            {provider.business_photo ? (
-              <img 
-                src={provider.business_photo} 
-                alt={provider.business_name} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              provider.business_name.charAt(0)
-            )}
-          </div>
-          <div className="flex-1">
-            <div className="flex justify-between items-center">
-              <p className="font-medium">{provider.business_name}</p>
-              <span className="text-sm text-muted-foreground">
-                Rank {provider.rank}
-              </span>
+    <div className="space-y-6">
+      {topProviders.map((provider, index) => (
+        <motion.div
+          key={provider.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.1 }}
+          className="group relative p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-300"
+        >
+          <div className="absolute top-0 right-0 mt-4 mr-4">
+            <div className={`px-3 py-1 rounded-full ${
+              provider.rank <= 3 
+                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white' 
+                : 'bg-gray-100 text-gray-600'
+            } text-sm font-semibold`}>
+              #{provider.rank}
             </div>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <span>{provider.bookings.completed} completed jobs</span>
-              <span className="mx-2">•</span>
-              <span>{provider.category}</span>
-              <span className="mx-2">•</span>
-              <span className="flex items-center">
-                {provider.rating.average !== null ? (
-                  <>
-                    {provider.rating.average.toFixed(1)}
-                    <span className="text-yellow-400 ml-1">★</span>
-                    <span className="ml-1 text-gray-500">({provider.rating.count})</span>
-                  </>
+          </div>
+          
+          <div className="flex items-start space-x-4">
+            <div className="relative">
+              <div className="h-16 w-16 rounded-lg bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-2xl text-white font-bold overflow-hidden shadow-lg group-hover:scale-105 transition-transform duration-300">
+                {provider.business_photo ? (
+                  <img 
+                    src={provider.business_photo} 
+                    alt={provider.business_name} 
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <span>No ratings</span>
+                  provider.business_name.charAt(0)
                 )}
-              </span>
+              </div>
+              {provider.rating.average !== null && (
+                <div className="absolute -bottom-2 -right-2 bg-white rounded-full px-2 py-1 shadow-sm">
+                  <div className="flex items-center">
+                    <span className="text-sm font-bold">{provider.rating.average.toFixed(1)}</span>
+                    <span className="text-yellow-400 ml-1">★</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex-1 pt-1">
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-300">
+                {provider.business_name}
+              </h3>
+              
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  {provider.category}
+                </span>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  {provider.bookings.completed} completed
+                </span>
+                {provider.rating.count > 0 && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {provider.rating.count} reviews
+                  </span>
+                )}
+              </div>
+              
+              <div className="mt-3 w-full bg-gray-100 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${(provider.bookings.completed / Math.max(...topProviders.map(p => p.bookings.completed))) * 100}%` }}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       ))}
     </div>
   </CardContent>

@@ -91,7 +91,7 @@ const ReportsPage = () => {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/provider/reports');
+      const response = await fetch('http://beerescue.xyz:5000/api/provider/reports');
       if (!response.ok) throw new Error('Failed to fetch reports');
       const data = await response.json();
       setReports(data.reports);
@@ -104,7 +104,7 @@ const ReportsPage = () => {
 
   const handleStatusUpdate = async (reportId: number) => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/provider/report/${reportId}/status`, {
+      const response = await fetch(`http://beerescue.xyz:5000/api/provider/report/${reportId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -312,7 +312,7 @@ const ReportsPage = () => {
                       <Button 
                         variant="outline" 
                         className="mt-2 w-full border-2 hover:border-blue-500 transition-all duration-200"
-                        onClick={() => window.open(`http://127.0.0.1:5000/api/provider/report/${selectedReport.id}/video`)}
+                        onClick={() => window.open(`http://beerescue.xyz:5000/api/provider/report/${selectedReport.id}/video`)}
                       >
                         <PlayCircle className="w-5 h-5 mr-2 text-blue-500" />
                         View Video Evidence

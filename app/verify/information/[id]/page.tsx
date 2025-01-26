@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AdminSidebar from "@/components/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,40 +15,31 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Mock data structure
-const pendingProviders = [
-  {
-    id: 1,
-    business_name: "John's Plumbing Services",
-    owner_name: "John Smith",
-    email: "john@plumbingservices.com",
-    phone_number: "+1 (555) 123-4567",
-    service_category: "Plumbing",
-    custom_category: null,
-    created_at: "2024-03-15",
-    documents: ["Business License", "Insurance", "Certifications"],
-    business_address: "123 Main St, Anytown, USA",
-    business_description: "Professional plumbing services with over 10 years of experience in residential and commercial projects.",
-    service_areas: ["Downtown", "Suburbs", "Metropolitan Area"],
-    working_hours: "Monday-Friday: 8AM-6PM, Saturday: 9AM-3PM",
-  },
-  {
-    id: 2,
-    business_name: "Elite Electrical Solutions",
-    owner_name: "Sarah Johnson",
-    email: "sarah@eliteelectrical.com",
-    phone_number: "+1 (555) 234-5678",
-    service_category: "Electrical",
-    custom_category: null,
-    created_at: "2024-03-14",
-    documents: ["Trade License", "Insurance", "Safety Certifications"],
-    business_address: "456 Oak Avenue, Metropolis, USA",
-    business_description: "Licensed electrical contractors specializing in residential and light commercial electrical services.",
-    service_areas: ["City Center", "North Side", "South Side"],
-    working_hours: "Monday-Saturday: 7AM-7PM",
-  }
-];
+interface Provider {
+  id: number;
+  business_photo: string;
+  business_name: string;
+  owner_name: string;
+  service_category: string;
+  custom_category: string | null;
+  category_display: string;
+  email: string;
+  phone_number: string;
+  verification_status: string;
+  verification_notes: string | null;
+}
+
+interface ApiResponse {
+  provider: Provider;
+  timestamps: {
+    registered_at: string;
+    days_since_registration: number;
+  };
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://beerescue.xyz:5000';
 
 const ProviderInformation = () => {
   const params = useParams();
@@ -56,21 +47,134 @@ const ProviderInformation = () => {
   const providerId = params.id;
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [provider, setProvider] = useState<Provider | null>(null);
+  const [timestamps, setTimestamps] = useState<ApiResponse['timestamps'] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const provider = pendingProviders.find(p => p.id === Number(providerId));
+  useEffect(() => {
+    fetchProviderDetails();
+  }, [providerId]);
 
-  if (!provider) {
-    return <div>Provider not found</div>;
+  const fetchProviderDetails = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/provider/${providerId}/details`, {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch provider details: ${errorText}`);
+      }
+      
+      const data: ApiResponse = await response.json();
+      setProvider(data.provider);
+      setTimestamps(data.timestamps);
+    } catch (error) {
+      console.error('Error fetching provider details:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load provider details');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleApprove = async () => {
+    try {
+      setActionLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/admin/provider/${providerId}/verify`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: 'approved',
+          notes: 'Application approved'
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to approve provider: ${errorText}`);
+      }
+      
+      router.push('/verify');
+    } catch (error) {
+      console.error('Error approving provider:', error);
+      setError(error instanceof Error ? error.message : 'Failed to approve provider');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      setError('Please provide a reason for rejection');
+      return;
+    }
+  
+    try {
+      setActionLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/admin/provider/${providerId}/verify`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: 'rejected',
+          notes: rejectionReason
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to reject provider: ${errorText}`);
+      }
+      
+      setIsRejectModalOpen(false);
+      router.push('/verify');
+    } catch (error) {
+      console.error('Error rejecting provider:', error);
+      setError(error instanceof Error ? error.message : 'Failed to reject provider');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex justify-center items-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
-  const handleReject = () => {
-    // Here you would handle the actual rejection with the reason
-    console.log('Rejecting provider:', providerId, 'Reason:', rejectionReason);
-    setIsRejectModalOpen(false);
-    setRejectionReason("");
-    // Optionally redirect back to the verification list
-    router.push('/verify');
-  };
+  if (error) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!provider) {
+    return (
+      <div className="p-8">
+        <Alert>
+          <AlertDescription>Provider not found</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-8">
@@ -92,6 +196,25 @@ const ProviderInformation = () => {
       </div>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Business Photo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {provider.business_photo ? (
+              <div className="relative w-48 h-48">
+                <img
+                  src={provider.business_photo}
+                  alt="Business Photo"
+                  className="rounded-lg object-cover w-full h-full"
+                />
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No business photo provided</p>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Business Details</CardTitle>
@@ -117,64 +240,25 @@ const ProviderInformation = () => {
               <div>
                 <p className="font-medium">Service Category</p>
                 <p className="text-muted-foreground">
-                  {provider.custom_category || provider.service_category}
+                  {provider.category_display}
                 </p>
               </div>
               <div>
-                <p className="font-medium">Application Date</p>
-                <p className="text-muted-foreground">{provider.created_at}</p>
+                <p className="font-medium">Registration Date</p>
+                <p className="text-muted-foreground">
+                  {timestamps ? `${new Date(timestamps.registered_at).toLocaleDateString()} (${timestamps.days_since_registration} days ago)` : 'Loading...'}
+                </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Business Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="font-medium">Business Address</p>
-              <p className="text-muted-foreground">{provider.business_address}</p>
-            </div>
-            <div>
-              <p className="font-medium">Business Description</p>
-              <p className="text-muted-foreground">{provider.business_description}</p>
-            </div>
-            <div>
-              <p className="font-medium">Service Areas</p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {provider.service_areas.map((area, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm"
-                  >
-                    {area}
-                  </span>
-                ))}
+              <div>
+                <p className="font-medium">Status</p>
+                <p className="text-muted-foreground capitalize">{provider.verification_status}</p>
               </div>
-            </div>
-            <div>
-              <p className="font-medium">Working Hours</p>
-              <p className="text-muted-foreground">{provider.working_hours}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Required Documents</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {provider.documents.map((doc, index) => (
-                <div
-                  key={index}
-                  className="p-3 bg-blue-50 text-blue-700 rounded-lg flex items-center gap-2"
-                >
-                  {doc}
+              {provider.verification_notes && (
+                <div>
+                  <p className="font-medium">Verification Notes</p>
+                  <p className="text-muted-foreground">{provider.verification_notes}</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -184,8 +268,14 @@ const ProviderInformation = () => {
             size="lg"
             variant="outline"
             className="bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700"
+            onClick={handleApprove}
+            disabled={actionLoading}
           >
-            <CheckCircle className="h-5 w-5 mr-2" />
+            {actionLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            ) : (
+              <CheckCircle className="h-5 w-5 mr-2" />
+            )}
             Approve Application
           </Button>
           <Button 
@@ -193,8 +283,13 @@ const ProviderInformation = () => {
             variant="outline"
             className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
             onClick={() => setIsRejectModalOpen(true)}
+            disabled={actionLoading}
           >
-            <XCircle className="h-5 w-5 mr-2" />
+            {actionLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            ) : (
+              <XCircle className="h-5 w-5 mr-2" />
+            )}
             Reject Application
           </Button>
         </div>
@@ -223,15 +318,20 @@ const ProviderInformation = () => {
             <Button
               variant="outline"
               onClick={() => setIsRejectModalOpen(false)}
+              disabled={actionLoading}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleReject}
-              disabled={!rejectionReason.trim()}
+              disabled={actionLoading || !rejectionReason.trim()}
             >
-              Confirm Rejection
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                'Confirm Rejection'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -248,4 +348,4 @@ const ProviderInformationPage = () => {
   );
 };
 
-export default ProviderInformationPage; 
+export default ProviderInformationPage;

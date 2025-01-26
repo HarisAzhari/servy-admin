@@ -88,7 +88,7 @@ export default function ServiceProvidersPage() {
     const fetchProviders = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://127.0.0.1:5000/api/providers');
+        const response = await fetch('http://beerescue.xyz:5000/api/providers');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -109,14 +109,14 @@ export default function ServiceProvidersPage() {
   const fetchProviderDetails = async (providerId: string) => {
     try {
       // Fetch basic provider details
-      const response = await fetch(`http://127.0.0.1:5000/api/admin/provider/${providerId}/details`);
+      const response = await fetch(`http://beerescue.xyz:5000/api/admin/provider/${providerId}/details`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
   
       // Fetch provider rating
-      const ratingResponse = await fetch(`http://127.0.0.1:5000/api/provider/${providerId}/rating`);
+      const ratingResponse = await fetch(`http://beerescue.xyz:5000/api/provider/${providerId}/rating`);
       if (ratingResponse.ok) {
         const ratingData = await ratingResponse.json();
         // Update the data with rating information
